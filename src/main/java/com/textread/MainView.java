@@ -2,6 +2,7 @@ package com.textread;
 
 import com.textread.model.AppSettings;
 import com.textread.model.ReadRegion;
+import com.textread.model.ReadingMode;
 import com.textread.repository.SettingsRepository;
 import com.textread.service.DebugLogger;
 import com.textread.service.ReadingOrchestrator;
@@ -125,6 +126,8 @@ public class MainView {
 
         ChoiceBox<String> languageChoice = new ChoiceBox<>(FXCollections.observableArrayList("Tieng Viet", "English"));
         languageChoice.setValue("eng".equalsIgnoreCase(settings.getOcrLanguage()) ? "English" : "Tieng Viet");
+        ChoiceBox<String> readingModeChoice = new ChoiceBox<>(FXCollections.observableArrayList("Auto", "Comic", "Article"));
+        readingModeChoice.setValue(toModeLabel(settings.getReadingMode()));
 
         ChoiceBox<String> adFilterChoice = new ChoiceBox<>(
                 FXCollections.observableArrayList(FILTER_OFF, FILTER_AI, FILTER_TEMPLATE, FILTER_BOTH)
@@ -137,7 +140,8 @@ public class MainView {
         grid.addRow(0, new Label("Scan Area"), regionLabel, selectRegionBtn);
         grid.addRow(1, new Label("Tessdata Path"), tessDataPath);
         grid.addRow(2, new Label("Language"), languageChoice);
-        grid.addRow(3, new Label("Ad Filter"), adFilterChoice);
+        grid.addRow(3, new Label("Reading Mode"), readingModeChoice);
+        grid.addRow(4, new Label("Ad Filter"), adFilterChoice);
 
         VBox root = new VBox(12, grid);
         root.setPadding(new Insets(16));
@@ -146,6 +150,7 @@ public class MainView {
         save.setOnAction(e -> {
             settings.setTessDataPath(tessDataPath.getText());
             applyLanguageChoice(languageChoice.getValue());
+            settings.setReadingMode(fromModeLabel(readingModeChoice.getValue()));
             applyFilterChoice(adFilterChoice.getValue());
 
             orchestrator.refreshSettings();
@@ -166,6 +171,27 @@ public class MainView {
         }
         settings.setOcrLanguage("vie");
         settings.setVoiceName("vi");
+    }
+
+    private String toModeLabel(ReadingMode mode) {
+        if (mode == null) {
+            return "Auto";
+        }
+        return switch (mode) {
+            case COMIC -> "Comic";
+            case ARTICLE -> "Article";
+            default -> "Auto";
+        };
+    }
+
+    private ReadingMode fromModeLabel(String label) {
+        if ("Comic".equalsIgnoreCase(label)) {
+            return ReadingMode.COMIC;
+        }
+        if ("Article".equalsIgnoreCase(label)) {
+            return ReadingMode.ARTICLE;
+        }
+        return ReadingMode.AUTO;
     }
 
     private String resolveFilterChoiceFromSettings() {

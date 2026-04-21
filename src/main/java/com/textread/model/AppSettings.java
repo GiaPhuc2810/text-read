@@ -15,6 +15,7 @@ public class AppSettings {
     private int scrollSpeed = 5;
     private int pitch = 100;
     private boolean muted = false;
+    private ReadingMode readingMode = ReadingMode.AUTO;
     private final Set<AdFilterMethod> adFilters = EnumSet.noneOf(AdFilterMethod.class);
 
     public ReadRegion getReadRegion() {
@@ -91,5 +92,13 @@ public class AppSettings {
 
     public Set<AdFilterMethod> getAdFilters() {
         return adFilters;
+    }
+
+    public ReadingMode getReadingMode() {
+        return readingMode;
+    }
+
+    public void setReadingMode(ReadingMode readingMode) {
+        this.readingMode = readingMode == null ? ReadingMode.AUTO : readingMode;
     }
 }

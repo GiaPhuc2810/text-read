@@ -6,6 +6,7 @@ Cong cu doc van ban tren man hinh:
 - Auto scroll: `java.awt.Robot`
 - UI: JavaFX (always-on-top controller)
 - SQL Server: luu/cai dat session
+- AI text filter mode: `Auto` (default), `Comic`, `Article`
 
 ## Yeu cau
 - JDK 21

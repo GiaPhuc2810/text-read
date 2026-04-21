@@ -1,6 +1,7 @@
 package com.textread.service;
 
 import com.textread.model.AppSettings;
+import com.textread.service.ai.AiTextFilterService;
 
 import java.text.Normalizer;
 import java.util.Objects;
@@ -44,6 +45,7 @@ public class ReadingOrchestrator {
     private final TtsService ttsService;
     private final ScrollService scrollService;
     private final AdDetectionService adDetectionService;
+    private final AiTextFilterService aiTextFilterService;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile String lastDeliveredText = "";
@@ -56,13 +58,15 @@ public class ReadingOrchestrator {
             OcrService ocrService,
             TtsService ttsService,
             ScrollService scrollService,
-            AdDetectionService adDetectionService
+            AdDetectionService adDetectionService,
+            AiTextFilterService aiTextFilterService
     ) {
         this.settings = settings;
         this.ocrService = ocrService;
         this.ttsService = ttsService;
         this.scrollService = scrollService;
         this.adDetectionService = adDetectionService;
+        this.aiTextFilterService = aiTextFilterService;
     }
 
     public void start() {
@@ -70,7 +74,7 @@ public class ReadingOrchestrator {
             if (readingTask != null) {
                 readingTask.cancel(true);
             }
-            DebugLogger.log("Start reading");
+            DebugLogger.log("Start reading (mode=" + settings.getReadingMode() + ")");
             waitingForReadCompletion = false;
             readingTask = scheduler.scheduleWithFixedDelay(
                     this::tick,
@@ -145,6 +149,7 @@ public class ReadingOrchestrator {
         String deliveredText = filteredText.isBlank()
                 ? normalizeRawText(rawText, settings)
                 : normalizeRawText(filteredText, settings);
+        deliveredText = aiTextFilterService.filter(deliveredText, settings);
 
         DebugLogger.log("OCR raw: " + preview(rawText));
         DebugLogger.log("OCR normalized: " + preview(deliveredText));

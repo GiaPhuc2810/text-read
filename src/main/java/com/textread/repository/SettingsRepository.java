@@ -2,6 +2,7 @@ package com.textread.repository;
 
 import com.textread.model.AppSettings;
 import com.textread.model.ReadRegion;
+import com.textread.model.ReadingMode;
 import com.textread.service.detection.AdFilterMethod;
 
 import java.sql.Connection;
@@ -31,7 +32,7 @@ public class SettingsRepository {
         AppSettings defaults = new AppSettings();
         String sql = """
                 SELECT TOP 1 region_x, region_y, region_width, region_height,
-                             tessdata_path, ocr_language, voice_name, speech_rate, volume, scroll_speed, pitch, muted, ad_filters
+                             tessdata_path, ocr_language, voice_name, reading_mode, speech_rate, volume, scroll_speed, pitch, muted, ad_filters
                 FROM app_settings
                 ORDER BY id DESC
                 """;
@@ -51,6 +52,7 @@ public class SettingsRepository {
             settings.setTessDataPath(rs.getString("tessdata_path"));
             settings.setOcrLanguage(rs.getString("ocr_language"));
             settings.setVoiceName(rs.getString("voice_name"));
+            settings.setReadingMode(parseReadingMode(rs.getString("reading_mode")));
             settings.setSpeechRate(rs.getInt("speech_rate"));
             settings.setVolume(rs.getInt("volume"));
             settings.setScrollSpeed(rs.getInt("scroll_speed"));
@@ -68,8 +70,8 @@ public class SettingsRepository {
     public void save(AppSettings settings) {
         String sql = """
                 INSERT INTO app_settings(region_x, region_y, region_width, region_height, tessdata_path, ocr_language, voice_name,
-                                         speech_rate, volume, scroll_speed, pitch, muted, ad_filters)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                         reading_mode, speech_rate, volume, scroll_speed, pitch, muted, ad_filters)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection conn = connect();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -80,12 +82,13 @@ public class SettingsRepository {
             ps.setString(5, settings.getTessDataPath());
             ps.setString(6, settings.getOcrLanguage());
             ps.setString(7, settings.getVoiceName());
-            ps.setInt(8, settings.getSpeechRate());
-            ps.setInt(9, settings.getVolume());
-            ps.setInt(10, settings.getScrollSpeed());
-            ps.setInt(11, settings.getPitch());
-            ps.setBoolean(12, settings.isMuted());
-            ps.setString(13, formatAdFilters(settings.getAdFilters()));
+            ps.setString(8, settings.getReadingMode().name());
+            ps.setInt(9, settings.getSpeechRate());
+            ps.setInt(10, settings.getVolume());
+            ps.setInt(11, settings.getScrollSpeed());
+            ps.setInt(12, settings.getPitch());
+            ps.setBoolean(13, settings.isMuted());
+            ps.setString(14, formatAdFilters(settings.getAdFilters()));
             ps.executeUpdate();
         } catch (SQLException ignored) {
         }
@@ -107,6 +110,7 @@ public class SettingsRepository {
                     tessdata_path NVARCHAR(255) NOT NULL,
                     ocr_language NVARCHAR(32) NOT NULL,
                     voice_name NVARCHAR(64) NOT NULL,
+                    reading_mode NVARCHAR(16) NOT NULL DEFAULT 'AUTO',
                     speech_rate INT NOT NULL,
                     volume INT NOT NULL DEFAULT 100,
                     scroll_speed INT NOT NULL,
@@ -117,6 +121,8 @@ public class SettingsRepository {
                 )
                 IF COL_LENGTH('app_settings', 'volume') IS NULL
                     ALTER TABLE app_settings ADD volume INT NOT NULL DEFAULT 100
+                IF COL_LENGTH('app_settings', 'reading_mode') IS NULL
+                    ALTER TABLE app_settings ADD reading_mode NVARCHAR(16) NOT NULL DEFAULT 'AUTO'
                 """;
         try (Connection conn = connect();
              Statement st = conn.createStatement()) {
@@ -144,5 +150,16 @@ public class SettingsRepository {
                 })
                 .filter(v -> v != null)
                 .collect(Collectors.toCollection(() -> EnumSet.noneOf(AdFilterMethod.class)));
+    }
+
+    private ReadingMode parseReadingMode(String value) {
+        if (value == null || value.isBlank()) {
+            return ReadingMode.AUTO;
+        }
+        try {
+            return ReadingMode.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return ReadingMode.AUTO;
+        }
     }
 }

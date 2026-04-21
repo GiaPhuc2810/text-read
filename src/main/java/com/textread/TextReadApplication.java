@@ -1,12 +1,15 @@
 package com.textread;
 
 import com.textread.model.AppSettings;
+import com.textread.model.ReadingMode;
 import com.textread.repository.SettingsRepository;
 import com.textread.service.AdDetectionService;
 import com.textread.service.OcrService;
 import com.textread.service.ReadingOrchestrator;
 import com.textread.service.ScrollService;
 import com.textread.service.TtsService;
+import com.textread.service.ai.AiTextFilterService;
+import com.textread.service.ai.HeuristicContentClassifier;
 import com.textread.service.detection.AiHeuristicAdDetector;
 import com.textread.service.detection.TemplateAdDetector;
 import com.textread.service.tts.GoogleTranslateTtsService;
@@ -40,8 +43,16 @@ public class TextReadApplication extends Application {
                 new AiHeuristicAdDetector(),
                 new TemplateAdDetector()
         );
+        AiTextFilterService aiTextFilterService = new AiTextFilterService(new HeuristicContentClassifier());
 
-        orchestrator = new ReadingOrchestrator(settings, ocrService, ttsService, scrollService, adDetectionService);
+        orchestrator = new ReadingOrchestrator(
+                settings,
+                ocrService,
+                ttsService,
+                scrollService,
+                adDetectionService,
+                aiTextFilterService
+        );
         MainView mainView = new MainView(settings, orchestrator, settingsRepository);
 
         stage.setTitle("Text Read Tool");
@@ -89,6 +100,9 @@ public class TextReadApplication extends Application {
         } else {
             settings.setOcrLanguage("vie");
             settings.setVoiceName("vi");
+        }
+        if (settings.getReadingMode() == null) {
+            settings.setReadingMode(ReadingMode.AUTO);
         }
         settings.getAdFilters().clear();
     }
