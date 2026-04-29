@@ -34,7 +34,7 @@ public class GoogleTranslateTtsService implements TtsService {
     private volatile boolean running = true;
     private volatile boolean cancelRequested = false;
     private volatile SourceDataLine currentLine;
-    private final AtomicBoolean speaking = new AtomicBoolean(false);
+    private final AtomicBoolean busy = new AtomicBoolean(false);
 
     public GoogleTranslateTtsService() {
         worker = new Thread(this::consume, "google-tts-worker");
@@ -75,20 +75,20 @@ public class GoogleTranslateTtsService implements TtsService {
 
     @Override
     public boolean isIdle() {
-        return queue.isEmpty() && !speaking.get();
+        return queue.isEmpty() && !busy.get();
     }
 
     private void consume() {
         while (running) {
             try {
                 SpeechTask task = queue.take();
+                busy.set(true);
                 cancelRequested = false;
                 byte[] mp3 = requestSpeechMp3(task);
                 if (mp3.length == 0 || cancelRequested) {
                     DebugLogger.log("TTS skip: empty audio response");
                     continue;
                 }
-                speaking.set(true);
                 DebugLogger.log("TTS play: " + preview(task.text()));
                 playMp3(mp3, task.volume(), task.playbackRate());
                 if (!cancelRequested && task.pauseMs() > 0) {
@@ -100,7 +100,7 @@ public class GoogleTranslateTtsService implements TtsService {
             } catch (Exception ex) {
                 DebugLogger.log("TTS error: " + ex.getClass().getSimpleName() + " - " + ex.getMessage());
             } finally {
-                speaking.set(false);
+                busy.set(false);
             }
         }
     }

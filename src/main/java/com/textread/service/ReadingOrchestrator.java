@@ -103,10 +103,12 @@ public class ReadingOrchestrator {
 
     public void updateSpeechRate(int rate) {
         settings.setSpeechRate(rate);
+        restartCurrentSpeechCycle();
     }
 
     public void updateVolume(int volume) {
         settings.setVolume(volume);
+        restartCurrentSpeechCycle();
     }
 
     public void testVoice() {
@@ -117,6 +119,19 @@ public class ReadingOrchestrator {
         lastDeliveredText = "";
         waitingForReadCompletion = false;
         nextAllowedScrollAtMs = 0L;
+    }
+
+    private void restartCurrentSpeechCycle() {
+        String textToReplay = lastDeliveredText;
+        ttsService.cancel();
+        waitingForReadCompletion = false;
+        lastDeliveredText = "";
+        nextAllowedScrollAtMs = 0L;
+        if (running.get() && textToReplay != null && !textToReplay.isBlank() && !settings.isMuted()) {
+            ttsService.speakAsync(textToReplay, settings);
+            lastDeliveredText = textToReplay;
+            waitingForReadCompletion = true;
+        }
     }
 
     public AppSettings getSettings() {
@@ -149,7 +164,12 @@ public class ReadingOrchestrator {
         String deliveredText = filteredText.isBlank()
                 ? normalizeRawText(rawText, settings)
                 : normalizeRawText(filteredText, settings);
-        deliveredText = aiTextFilterService.filter(deliveredText, settings);
+        String aiFilteredText = aiTextFilterService.filter(deliveredText, settings);
+        if (!deliveredText.isBlank() && aiFilteredText.isBlank()) {
+            DebugLogger.log("AI filter fallback: keep normalized text");
+        } else {
+            deliveredText = aiFilteredText;
+        }
 
         DebugLogger.log("OCR raw: " + preview(rawText));
         DebugLogger.log("OCR normalized: " + preview(deliveredText));
@@ -257,7 +277,9 @@ public class ReadingOrchestrator {
                     && !VI_COMMON_WORDS.contains(word.toLowerCase())) {
                 continue;
             }
-            if (isSuspiciousVietnameseWord(word) && !isStrongVietnameseWord(word)) {
+            if (isSuspiciousVietnameseWord(word)
+                    && !isStrongVietnameseWord(word)
+                    && !looksLikeProperNameToken(token)) {
                 continue;
             }
             out.append(token).append(' ');
@@ -494,6 +516,26 @@ public class ReadingOrchestrator {
             return false;
         }
         return true;
+    }
+
+    private boolean looksLikeProperNameToken(String token) {
+        if (token == null) {
+            return false;
+        }
+        String cleaned = token.replaceAll("[^\\p{L}\\-']", "");
+        if (cleaned.length() < 2) {
+            return false;
+        }
+        if (!Character.isUpperCase(cleaned.charAt(0))) {
+            return false;
+        }
+        int letterCount = 0;
+        for (int i = 0; i < cleaned.length(); i++) {
+            if (Character.isLetter(cleaned.charAt(i))) {
+                letterCount++;
+            }
+        }
+        return letterCount >= 2;
     }
 
     private boolean containsForbiddenVietnameseChars(String word) {

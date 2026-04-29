@@ -7,7 +7,7 @@ import java.util.Set;
 
 public class HeuristicContentClassifier implements ContentClassifier {
     private static final Set<String> NOISE_HINTS = Set.of(
-            "nettruyen", "nettruuen", "index.com", "http", "www.", "quang cao", "sponsored", "ad"
+            "nettruyen", "nettruuen", "index.com", "http://", "https://", "www.", "quang cao", "sponsored"
     );
 
     @Override

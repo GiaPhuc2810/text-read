@@ -8,9 +8,11 @@ import net.sourceforge.tess4j.TesseractException;
 
 import java.awt.AWTException;
 import java.awt.Dimension;
+import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.Toolkit;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,7 +42,9 @@ public class OcrService {
             return "";
         }
 
-        BufferedImage capture = robot.createScreenCapture(resolveCaptureArea(settings.getReadRegion()));
+        Rectangle captureArea = resolveCaptureArea(settings.getReadRegion());
+        BufferedImage capture = robot.createScreenCapture(captureArea);
+        maskAppWindow(capture, captureArea, settings.getAppWindowRegion());
 
         ITesseract tesseract = new Tesseract();
         tesseract.setDatapath(settings.getTessDataPath());
@@ -64,14 +68,47 @@ public class OcrService {
         if (configuredRegion == null) {
             return fullScreen;
         }
-        if (configuredRegion.width() < 200 || configuredRegion.height() < 120) {
+        if (configuredRegion.width() < 20 || configuredRegion.height() < 20) {
             return fullScreen;
         }
+        int x = Math.max(0, configuredRegion.x());
+        int y = Math.max(0, configuredRegion.y());
+        int width = Math.min(configuredRegion.width(), Math.max(1, screen.width - x));
+        int height = Math.min(configuredRegion.height(), Math.max(1, screen.height - y));
         return new Rectangle(
-                Math.max(0, configuredRegion.x()),
-                Math.max(0, configuredRegion.y()),
-                Math.min(configuredRegion.width(), screen.width),
-                Math.min(configuredRegion.height(), screen.height)
+                x,
+                y,
+                width,
+                height
         );
+    }
+
+    private void maskAppWindow(BufferedImage capture, Rectangle captureArea, ReadRegion appWindowRegion) {
+        if (capture == null || captureArea == null || appWindowRegion == null) {
+            return;
+        }
+        if (appWindowRegion.width() <= 1 || appWindowRegion.height() <= 1) {
+            return;
+        }
+        Rectangle appRect = new Rectangle(
+                appWindowRegion.x(),
+                appWindowRegion.y(),
+                appWindowRegion.width(),
+                appWindowRegion.height()
+        );
+        Rectangle overlap = captureArea.intersection(appRect);
+        if (overlap.isEmpty()) {
+            return;
+        }
+
+        int localX = overlap.x - captureArea.x;
+        int localY = overlap.y - captureArea.y;
+        Graphics2D g2 = capture.createGraphics();
+        try {
+            g2.setColor(Color.WHITE);
+            g2.fillRect(localX, localY, overlap.width, overlap.height);
+        } finally {
+            g2.dispose();
+        }
     }
 }

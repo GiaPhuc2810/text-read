@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WindowsPowerShellTtsService implements TtsService {
     private final BlockingQueue<SpeechTask> queue = new LinkedBlockingQueue<>();
@@ -14,6 +15,7 @@ public class WindowsPowerShellTtsService implements TtsService {
     private volatile boolean running = true;
     private volatile Process currentProcess;
     private volatile boolean warnedNoVietnameseVoice = false;
+    private final AtomicBoolean busy = new AtomicBoolean(false);
 
     public WindowsPowerShellTtsService() {
         worker = new Thread(this::consume, "windows-tts-worker");
@@ -47,14 +49,22 @@ public class WindowsPowerShellTtsService implements TtsService {
         cancel();
     }
 
+    @Override
+    public boolean isIdle() {
+        return queue.isEmpty() && !busy.get();
+    }
+
     private void consume() {
         while (running) {
             try {
                 SpeechTask task = queue.take();
+                busy.set(true);
                 speak(task);
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
                 break;
+            } finally {
+                busy.set(false);
             }
         }
     }

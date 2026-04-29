@@ -1,6 +1,7 @@
 package com.textread;
 
 import com.textread.model.AppSettings;
+import com.textread.model.ReadRegion;
 import com.textread.model.ReadingMode;
 import com.textread.repository.SettingsRepository;
 import com.textread.service.AdDetectionService;
@@ -56,8 +57,9 @@ public class TextReadApplication extends Application {
         MainView mainView = new MainView(settings, orchestrator, settingsRepository);
 
         stage.setTitle("Text Read Tool");
-        stage.setAlwaysOnTop(true);
+        stage.setAlwaysOnTop(false);
         stage.setScene(new Scene(mainView.build(), 440, 360));
+        bindAppWindowExclusion(stage, settings);
         stage.show();
     }
 
@@ -105,5 +107,20 @@ public class TextReadApplication extends Application {
             settings.setReadingMode(ReadingMode.AUTO);
         }
         settings.getAdFilters().clear();
+    }
+
+    private void bindAppWindowExclusion(Stage stage, AppSettings settings) {
+        Runnable update = () -> settings.setAppWindowRegion(new ReadRegion(
+                (int) Math.round(stage.getX()),
+                (int) Math.round(stage.getY()),
+                (int) Math.round(stage.getWidth()),
+                (int) Math.round(stage.getHeight())
+        ));
+
+        stage.xProperty().addListener((obs, oldVal, newVal) -> update.run());
+        stage.yProperty().addListener((obs, oldVal, newVal) -> update.run());
+        stage.widthProperty().addListener((obs, oldVal, newVal) -> update.run());
+        stage.heightProperty().addListener((obs, oldVal, newVal) -> update.run());
+        update.run();
     }
 }

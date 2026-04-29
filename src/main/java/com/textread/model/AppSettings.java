@@ -7,6 +7,7 @@ import java.util.Set;
 
 public class AppSettings {
     private ReadRegion readRegion = new ReadRegion(0, 0, 1280, 720);
+    private ReadRegion appWindowRegion = new ReadRegion(0, 0, 0, 0);
     private String tessDataPath = "./tessdata";
     private String ocrLanguage = "vie";
     private String voiceName = "vi-VN";
@@ -24,6 +25,14 @@ public class AppSettings {
 
     public void setReadRegion(ReadRegion readRegion) {
         this.readRegion = readRegion;
+    }
+
+    public ReadRegion getAppWindowRegion() {
+        return appWindowRegion;
+    }
+
+    public void setAppWindowRegion(ReadRegion appWindowRegion) {
+        this.appWindowRegion = appWindowRegion == null ? new ReadRegion(0, 0, 0, 0) : appWindowRegion;
     }
 
     public String getTessDataPath() {

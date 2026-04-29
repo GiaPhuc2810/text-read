@@ -7,11 +7,13 @@ import com.textread.service.TtsService;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FreeTtsService implements TtsService {
     private final BlockingQueue<SpeechTask> queue = new LinkedBlockingQueue<>();
     private final Thread worker;
     private volatile boolean running = true;
+    private final AtomicBoolean busy = new AtomicBoolean(false);
 
     public FreeTtsService() {
         worker = new Thread(this::consume, "tts-worker");
@@ -39,13 +41,21 @@ public class FreeTtsService implements TtsService {
         queue.clear();
     }
 
+    @Override
+    public boolean isIdle() {
+        return queue.isEmpty() && !busy.get();
+    }
+
     private void consume() {
         while (running) {
             try {
                 SpeechTask task = queue.take();
+                busy.set(true);
                 speak(task);
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
+            } finally {
+                busy.set(false);
             }
         }
     }
